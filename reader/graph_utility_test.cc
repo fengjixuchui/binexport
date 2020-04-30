@@ -1,4 +1,4 @@
-// Copyright 2011-2019 Google LLC. All Rights Reserved.
+// Copyright 2011-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,11 +19,10 @@
 
 #include <boost/graph/adjacency_list.hpp>  // NOLINT
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
-namespace security {
-namespace binexport {
+namespace security::binexport {
 
 class GraphUtilityTest : public testing::Test {
  protected:
@@ -100,5 +99,4 @@ TEST_F(GraphUtilityTest, GetEdgeVector) {
   EXPECT_EQ(edge_vector.target_out_degree, 1);
 }
 
-}  // namespace binexport
-}  // namespace security
+}  // namespace security::binexport

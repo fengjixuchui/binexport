@@ -1,4 +1,4 @@
-// Copyright 2011-2019 Google LLC. All Rights Reserved.
+// Copyright 2011-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,34 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_ZYNAMICS_BINEXPORT_DUMP_WRITER_H_
-#define THIRD_PARTY_ZYNAMICS_BINEXPORT_DUMP_WRITER_H_
+#ifndef DUMP_WRITER_H_
+#define DUMP_WRITER_H_
 
 #include <fstream>
 
 #include "third_party/zynamics/binexport/writer.h"
 
-namespace security {
-namespace binexport {
+namespace security::binexport {
 
 class DumpWriter : public Writer {
  public:
   explicit DumpWriter(std::ostream& stream);
   explicit DumpWriter(const std::string& file_name);
 
-  not_absl::Status Write(const CallGraph& call_graph,
-                         const FlowGraph& flow_graph,
-                         const Instructions& instructions,
-                         const AddressReferences& address_references,
-                         const TypeSystem* type_system,
-                         const AddressSpace& address_space) override;
+  absl::Status Write(const CallGraph& call_graph, const FlowGraph& flow_graph,
+                     const Instructions& instructions,
+                     const AddressReferences& address_references,
+                     const TypeSystem* type_system,
+                     const AddressSpace& address_space) override;
 
  private:
   std::ofstream file_;
   std::ostream& stream_;
 };
 
-}  // namespace binexport
-}  // namespace security
+}  // namespace security::binexport
 
-#endif  // THIRD_PARTY_ZYNAMICS_BINEXPORT_DUMP_WRITER_H_
+#endif  // DUMP_WRITER_H_

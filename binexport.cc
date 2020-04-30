@@ -1,4 +1,4 @@
-// Copyright 2011-2019 Google LLC. All Rights Reserved.
+// Copyright 2011-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,8 +15,7 @@
 #include "base/logging.h"
 #include "third_party/zynamics/binexport/binexport.h"
 
-namespace security {
-namespace binexport {
+namespace security::binexport {
 
 Address GetInstructionAddress(const BinExport2& proto, int index) {
   // Either the instruction has an address stored directly or we keep iterating
@@ -61,5 +60,4 @@ std::vector<Address> GetAllInstructionAddresses(const BinExport2& proto) {
   return result;
 }
 
-}  // namespace binexport
-}  // namespace security
+}  // namespace security::binexport

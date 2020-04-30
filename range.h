@@ -1,4 +1,4 @@
-// Copyright 2011-2019 Google LLC. All Rights Reserved.
+// Copyright 2011-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@
 // Range<std::vector<int>> range(v.begin() + n, v.begin() + m);
 // for (int i : r) { /* Do something with i */ }
 
-#ifndef THIRD_PARTY_ZYNAMICS_BINEXPORT_RANGE_H_
-#define THIRD_PARTY_ZYNAMICS_BINEXPORT_RANGE_H_
+#ifndef RANGE_H_
+#define RANGE_H_
 
 #include <utility>
 
@@ -63,4 +63,4 @@ class Range {
   iterator end_;
 };
 
-#endif  // THIRD_PARTY_ZYNAMICS_BINEXPORT_RANGE_H_
+#endif  // RANGE_H_

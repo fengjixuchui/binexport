@@ -1,4 +1,4 @@
-// Copyright 2011-2019 Google LLC. All Rights Reserved.
+// Copyright 2011-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@
 #include <string>
 #include <tuple>
 
+// clang-format off
 #include "third_party/zynamics/binexport/ida/begin_idasdk.inc"  // NOLINT
 #include <idp.hpp>                                              // NOLINT
 #include <allins.hpp>                                           // NOLINT
@@ -33,6 +34,7 @@
 #include <typeinf.hpp>                                          // NOLINT
 #include <ua.hpp>                                               // NOLINT
 #include "third_party/zynamics/binexport/ida/end_idasdk.inc"    // NOLINT
+// clang-format on
 
 #include "base/logging.h"
 #include "third_party/absl/strings/ascii.h"
@@ -40,9 +42,8 @@
 #include "third_party/absl/time/time.h"
 #include "third_party/zynamics/binexport/address_references.h"
 #include "third_party/zynamics/binexport/base_types.h"
-#include "third_party/zynamics/binexport/util/filesystem.h"
 #include "third_party/zynamics/binexport/flow_analyzer.h"
-#include "third_party/zynamics/binexport/util/format.h"
+#include "third_party/zynamics/binexport/flow_graph.h"
 #include "third_party/zynamics/binexport/ida/arm.h"
 #include "third_party/zynamics/binexport/ida/dalvik.h"
 #include "third_party/zynamics/binexport/ida/generic.h"
@@ -50,17 +51,15 @@
 #include "third_party/zynamics/binexport/ida/mips.h"
 #include "third_party/zynamics/binexport/ida/ppc.h"
 #include "third_party/zynamics/binexport/ida/types_container.h"
-#include "third_party/zynamics/binexport/util/timer.h"
+#include "third_party/zynamics/binexport/ida/util.h"
 #include "third_party/zynamics/binexport/type_system.h"
+#include "third_party/zynamics/binexport/util/filesystem.h"
+#include "third_party/zynamics/binexport/util/format.h"
+#include "third_party/zynamics/binexport/util/timer.h"
 #include "third_party/zynamics/binexport/virtual_memory.h"
 #include "third_party/zynamics/binexport/x86_nop.h"
 
-namespace security {
-namespace binexport {
-
-std::string ToString(const qstring& ida_string) {
-  return std::string(ida_string.c_str(), ida_string.length());
-}
+namespace security::binexport {
 
 enum Architecture {
   kX86 = 0,
@@ -140,11 +139,11 @@ absl::optional<std::string> GetArchitectureName() {
   // This is not strictly correct, i.e. for 16-bit archs and also for 128-bit
   // archs, but is what IDA supports. This needs to be changed if IDA introduces
   // is_128bit().
-  absl::StrAppend(&architecture, inf.is_64bit() ? "-64" : "-32");
+  absl::StrAppend(&architecture, inf_is_64bit() ? "-64" : "-32");
   return architecture;
 }
 
-int GetArchitectureBitness() { return inf.is_64bit() ? 64 : 32; }
+int GetArchitectureBitness() { return inf_is_64bit() ? 64 : 32; }
 
 std::string GetModuleName() {
   char path_buffer[QMAXPATH] = {0};
@@ -244,7 +243,6 @@ std::string GetSizePrefix(const size_t size_in_bytes) {
 }
 
 size_t GetOperandByteSize(const insn_t& instruction, const op_t& operand) {
-  constexpr int dt_half = 0x7f;  // Defined in IDA SDK module/arm/arm.hpp
   switch (operand.dtype) {
     case dt_byte:
       return 1;  // 8 bit
@@ -296,7 +294,7 @@ bool IsCodeSegment(const Address address) {
 }
 
 static std::string GetStringReference(ea_t address) {
-  // This only returns the first std::string ref - there may be several.
+  // This only returns the first string ref - there may be several.
   xrefblk_t xrefs;
   if (xrefs.first_from(address, XREF_DATA) == 0) {
     return "";
@@ -463,7 +461,7 @@ std::string GetRegisterName(size_t index, size_t segment_size) {
   if (get_reg_name(&ida_reg_name, index, segment_size) != -1) {
     return ToString(ida_reg_name);
   }
-  // Do not return empty std::string due to assertion fail in database_writer.cc
+  // Do not return empty string due to assertion fail in database_writer.cc
   return "<bad register>";
 }
 
@@ -680,7 +678,8 @@ int GetPermissions(const segment_t* ida_segment) {
 
 void AnalyzeFlowIda(EntryPoints* entry_points, const ModuleMap* modules,
                     Writer* writer, detego::Instructions* instructions,
-                    FlowGraph* flow_graph, CallGraph* call_graph) {
+                    FlowGraph* flow_graph, CallGraph* call_graph,
+                    FlowGraph::NoReturnHeuristic noreturn_heuristic) {
   Timer<> timer;
   AddressReferences address_references;
 
@@ -720,7 +719,8 @@ void AnalyzeFlowIda(EntryPoints* entry_points, const ModuleMap* modules,
   switch (GetArchitecture()) {
     case kX86:
       parse_instruction = ParseInstructionIdaMetaPc;
-      mark_x86_nops = true;
+      mark_x86_nops =
+          noreturn_heuristic == FlowGraph::NoReturnHeuristic::kNopsAfterCall;
       break;
     case kArm:
       parse_instruction = ParseInstructionIdaArm;
@@ -785,7 +785,8 @@ void AnalyzeFlowIda(EntryPoints* entry_points, const ModuleMap* modules,
   ReconstructFlowGraph(instructions, *flow_graph, call_graph);
 
   LOG(INFO) << "reconstructing functions";
-  flow_graph->ReconstructFunctions(instructions, call_graph);
+  flow_graph->ReconstructFunctions(instructions, call_graph,
+                                   noreturn_heuristic);
 
   // Must be called after simplifyFlowGraphs since that will sometimes
   // remove source basic blocks for an edge. Only happens when IDA completely
@@ -971,7 +972,7 @@ void GetGlobalReferences(Address address, Comments* comments) {
     // This stores the instance pointer
     comments->emplace_back(address, UA_MAXOP + 1024 + count,
                            CallGraph::CacheString(ToString(ida_name)),
-                           Comment::GLOBALREFERENCE, false);
+                           Comment::GLOBAL_REFERENCE, false);
   }
 }
 
@@ -1040,7 +1041,7 @@ void GetLocalReferences(const insn_t& instruction, Comments* comments) {
     if (cache.local_vars.find(offset) != cache.local_vars.end()) {
       comments->emplace_back(instruction.ea, UA_MAXOP + 2048 + operand_num,
                              CallGraph::CacheString(cache.local_vars[offset]),
-                             Comment::LOCALREFERENCE, false);
+                             Comment::LOCAL_REFERENCE, false);
     }
   }
 }
@@ -1055,5 +1056,4 @@ void GetComments(const insn_t& instruction, Comments* comments) {
   GetLocalReferences(instruction, comments);
 }
 
-}  // namespace binexport
-}  // namespace security
+}  // namespace security::binexport

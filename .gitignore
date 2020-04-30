@@ -1,24 +1,31 @@
-# Editor backup files
+# Editor backup files/IDE files
 *~
 .*.swp
 .*.swo
 
+# IDEs
+.clangd/
+.idea/
+.vscode/
+compile_commands.json
+
 # Prevent to accidentally add IDA SDK
-third_party/idasdk/*
+third_party/idasdk*/*
 third_party/idasdk*.zip
 
 # Ignore changes in submodules and code
-third_party/openssl/*
-third_party/postgresql/*
-third_party/protobuf/*
+third_party/openssl/
+third_party/postgresql/
+third_party/protobuf/
 
 # Build artifacts
-build_linux/*
-build_msvc/*
-build_mac/*
+build/
+build_linux/
+build_msvc/
+build_mac/
 third_party/zynamics/binexport
 
 # Auto-generated
 *.pb.cc
 *.pb.h
-version.h
+version.cc

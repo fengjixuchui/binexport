@@ -1,4 +1,4 @@
-// Copyright 2011-2019 Google LLC. All Rights Reserved.
+// Copyright 2011-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,10 @@
 
 #include "third_party/zynamics/binexport/util/timer.h"
 
-#include <gtest/gtest.h>
+#include "gtest/gtest.h"
+
+namespace security::binexport {
+namespace {
 
 // Minimal steady clock implementation for testing. Time monotonically
 // increases in units of 5 seconds (until the underlying time_point
@@ -41,3 +44,6 @@ TEST(TimerTest, Ints) {
   timer.restart();
   EXPECT_EQ(timer.elapsed(), 5);
 }
+
+}  // namespace
+}  // namespace security::binexport

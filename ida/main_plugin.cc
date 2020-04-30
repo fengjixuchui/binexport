@@ -1,4 +1,4 @@
-// Copyright 2011-2019 Google LLC. All Rights Reserved.
+// Copyright 2011-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "third_party/zynamics/binexport/ida/main_plugin.h"
+
+// clang-format off
 #include "third_party/zynamics/binexport/ida/begin_idasdk.inc"  // NOLINT
 #include <auto.hpp>                                             // NOLINT
 #include <expr.hpp>                                             // NOLINT
@@ -20,9 +23,11 @@
 #include <kernwin.hpp>                                          // NOLINT
 #include <loader.hpp>                                           // NOLINT
 #include "third_party/zynamics/binexport/ida/end_idasdk.inc"    // NOLINT
+// clang-format on
 
 #include "base/logging.h"
 #include "third_party/absl/base/attributes.h"
+#include "third_party/absl/memory/memory.h"
 #include "third_party/absl/strings/ascii.h"
 #include "third_party/absl/strings/escaping.h"
 #include "third_party/absl/strings/numbers.h"
@@ -30,42 +35,31 @@
 #include "third_party/absl/time/time.h"
 #include "third_party/zynamics/binexport/binexport2_writer.h"
 #include "third_party/zynamics/binexport/call_graph.h"
-#include "third_party/zynamics/binexport/database_writer.h"
+#include "third_party/zynamics/binexport/database/postgresql_writer.h"
 #include "third_party/zynamics/binexport/dump_writer.h"
 #include "third_party/zynamics/binexport/entry_point.h"
-#include "third_party/zynamics/binexport/util/filesystem.h"
 #include "third_party/zynamics/binexport/flow_analyzer.h"
 #include "third_party/zynamics/binexport/flow_graph.h"
-#include "third_party/zynamics/binexport/util/format.h"
 #include "third_party/zynamics/binexport/ida/digest.h"
-#include "third_party/zynamics/binexport/ida/log.h"
 #include "third_party/zynamics/binexport/ida/names.h"
+#include "third_party/zynamics/binexport/ida/log_sink.h"
 #include "third_party/zynamics/binexport/ida/ui.h"
 #include "third_party/zynamics/binexport/instruction.h"
 #include "third_party/zynamics/binexport/statistics_writer.h"
+#include "third_party/zynamics/binexport/util/filesystem.h"
+#include "third_party/zynamics/binexport/util/format.h"
+#include "third_party/zynamics/binexport/util/logging.h"
 #include "third_party/zynamics/binexport/util/timer.h"
 #include "third_party/zynamics/binexport/version.h"
 #include "third_party/zynamics/binexport/virtual_memory.h"
 
-namespace security {
-namespace binexport {
-namespace {
+namespace security::binexport {
 
-std::string GetArgument(const char* name) {
+std::string GetArgument(absl::string_view name) {
   const char* option =
       get_plugin_options(absl::StrCat("BinExport", name).c_str());
-  if (option == nullptr) {
-    // Try old name as well.
-    get_plugin_options(absl::StrCat("Exporter", name).c_str());
-  }
   return option ? option : "";
 }
-
-constexpr char kName[] = "BinExport " BINEXPORT_RELEASE;
-constexpr char kCopyright[] =
-    "(c)2004-2011 zynamics GmbH, (c)2011-2019 Google LLC.";
-constexpr char kComment[] = "Export to SQL RE-DB, BinDiff binary or text dump";
-constexpr char kHotKey[] = "";
 
 enum class ExportMode { kSql = 1, kBinary = 2, kText = 3, kStatistics = 4 };
 
@@ -119,7 +113,10 @@ void ExportIdb(Writer* writer) {
   FlowGraph flow_graph;
   CallGraph call_graph;
   AnalyzeFlowIda(&entry_points, &modules, writer, &instructions, &flow_graph,
-                 &call_graph);
+                 &call_graph,
+                 Plugin::instance()->x86_noreturn_heuristic()
+                     ? FlowGraph::NoReturnHeuristic::kNopsAfterCall
+                     : FlowGraph::NoReturnHeuristic::kNone);
 
   LOG(INFO) << absl::StrCat(
       GetModuleName(), ": exported ", flow_graph.GetFunctions().size(),
@@ -130,25 +127,17 @@ void ExportIdb(Writer* writer) {
 int ExportSql(absl::string_view schema_name,
               absl::string_view connection_string) {
   try {
-    auto sha256_or = GetInputFileSha256();
-    const std::string sha256 =
-        sha256_or.ok() ? std::move(sha256_or).ValueOrDie() : "";
-    auto md5_or = GetInputFileMd5();
-    const std::string md5 = md5_or.ok() ? std::move(md5_or).ValueOrDie() : "";
+    const std::string sha256 = GetInputFileSha256().value_or("");
+    const std::string md5 = GetInputFileMd5().value_or("");
     if (sha256.empty() && md5.empty()) {
-      throw std::runtime_error{"Failed to load input file hashes"};
+      throw std::runtime_error("Failed to load input file hashes");
     }
-    DatabaseWriter writer{std::string(schema_name) /* Database */,
-                          GetModuleName(),
-                          /*module_id=*/0,
-                          md5,
-                          sha256,
-                          GetArchitectureName().value(),
-                          GetImageBase(),
-                          kName /* Version std::string */,
-                          !connection_string.empty()
-                              ? std::string(connection_string)
-                              : GetArgument("ConnectionString")};
+    DatabaseWriter writer(
+        std::string(schema_name) /* Database */, GetModuleName(),
+        /*module_id=*/0, md5, sha256, GetArchitectureName().value(),
+        GetImageBase(), kBinExportName /* "BinExport " + version */,
+        !connection_string.empty() ? std::string(connection_string)
+                                   : GetArgument("ConnectionString"));
     int query_size = 0;
     writer.set_query_size(
         absl::SimpleAtoi(GetArgument("QuerySize"), &query_size)
@@ -170,18 +159,14 @@ int ExportSql(absl::string_view schema_name,
 
 int ExportBinary(const std::string& filename) {
   try {
-    auto sha256_or = GetInputFileSha256();
     std::string hash;
-    if (sha256_or.ok()) {
-      hash = std::move(sha256_or).ValueOrDie();
+    if (auto sha256_or = GetInputFileSha256(); sha256_or.ok()) {
+      hash = std::move(sha256_or).value();
     } else {
-      auto md5_or = GetInputFileMd5();
-      if (md5_or.ok()) {
-        hash = std::move(md5_or).ValueOrDie();
-      }
+      hash = GetInputFileMd5().value_or("");
     }
-    BinExport2Writer writer{filename, GetModuleName(), hash,
-                            GetArchitectureName().value()};
+    BinExport2Writer writer(filename, GetModuleName(), hash,
+                            GetArchitectureName().value());
     ExportIdb(&writer);
   } catch (const std::exception& error) {
     LOG(INFO) << "Error exporting: " << error.what();
@@ -239,7 +224,7 @@ void idaapi ButtonTextExport(TWidget** /* fields */, int) {
   }
 
   if (FileExists(filename) &&
-        ask_yn(0, "'%s' already exists - overwrite?", filename) != 1) {
+      ask_yn(0, "'%s' already exists - overwrite?", filename) != 1) {
     return;
   }
 
@@ -273,7 +258,7 @@ void idaapi ButtonStatisticsExport(TWidget** /* fields */, int) {
   }
 
   if (FileExists(filename) &&
-        ask_yn(0, "'%s' already exists - overwrite?", filename) != 1) {
+      ask_yn(0, "'%s' already exists - overwrite?", filename) != 1) {
     return;
   }
 
@@ -289,7 +274,7 @@ const char* GetDialog() {
       "See https://github.com/google/binexport/ for details on how to "
       "build/install and use this plugin.\n"
       "ENDHELP\n",
-      kName,
+      kBinExportName,
       "\n\n\n"
       "<BinExport v2 Binary Export:B:1:30:::>\n\n"
       "<Text Dump Export:B:1:30:::>\n\n"
@@ -300,9 +285,8 @@ const char* GetDialog() {
 int DoExport(ExportMode mode, std::string name,
              absl::string_view connection_string) {
   if (name.empty()) {
-    auto temp_or = GetOrCreateTempDirectory("BinExport");
-    name =
-        temp_or.ok() ? temp_or.ValueOrDie() : absl::StrCat(".", kPathSeparator);
+    name = GetOrCreateTempDirectory("BinExport")
+               .value_or(absl::StrCat(".", kPathSeparator));
   }
   if (IsDirectory(name) && connection_string.empty()) {
     name = JoinPath(name, GetDefaultName(mode));
@@ -388,8 +372,8 @@ static const ext_idcfunc_t kBinExportSqlIdcFunc = {
     EXTFUN_BASE};
 
 // Builds a database connection string from the plugin arguments given on the
-// command-line.
-// Note: This function does not escape any of the strings it gets passed in.
+// command-line. Note: This function does not escape any of the strings it gets
+// passed in.
 std::string GetConnectionStringFromArguments() {
   // See section 32.1.1.1. ("Keyword/Value Connection Strings") at
   // https://www.postgresql.org/docs/9.6/static/libpq-connect.html
@@ -408,7 +392,8 @@ ssize_t idaapi UiHook(void*, int event_id, va_list arguments) {
 
   // If IDA was invoked with -OBinExportAutoAction:<action>, wait for auto
   // analysis to finish, then invoke the requested action and exit.
-  const std::string auto_action = absl::AsciiStrToUpper(GetArgument("AutoAction"));
+  const std::string auto_action =
+      absl::AsciiStrToUpper(GetArgument("AutoAction"));
   if (auto_action.empty()) {
     return 0;
   }
@@ -441,29 +426,34 @@ ssize_t idaapi UiHook(void*, int event_id, va_list arguments) {
   return 0;  // Not reached
 }
 
-int idaapi PluginInit() {
-  LoggingOptions options;
-  options.set_alsologtostderr(
-      absl::AsciiStrToUpper(GetArgument("AlsoLogToStdErr")) == "TRUE");
-  options.set_log_filename(GetArgument("LogFile"));
-  if (!InitLogging(options)) {
+int Plugin::Init() {
+  alsologtostderr_ =
+      absl::AsciiStrToUpper(GetArgument("AlsoLogToStdErr")) == "TRUE";
+  if (auto status = InitLogging(LoggingOptions{}
+                                    .set_alsologtostderr(alsologtostderr_)
+                                    .set_log_filename(GetArgument("LogFile")),
+                                absl::make_unique<IdaLogSink>());
+      !status.ok()) {
     LOG(INFO) << "Error initializing logging, skipping BinExport plugin";
     return PLUGIN_SKIP;
   }
 
-  LOG(INFO) << kName << " (@" << BINEXPORT_REVISION << ", " << __DATE__
-#ifndef NDEBUG
-            << ", debug build"
-#endif
-            << "), " << kCopyright;
+  const auto heuristic = GetArgument("X86NoReturnHeuristic");
+  if (!heuristic.empty()) {
+    // If unset, this leaves the default value
+    x86_noreturn_heuristic_ = absl::AsciiStrToUpper(heuristic) == "TRUE";
+  }
+
+  LOG(INFO) << kBinExportName << " " << kBinExportDetailedVersion << ", "
+            << kBinExportCopyright;
 
   addon_info_t addon_info;
   addon_info.id = "com.google.binexport";
-  addon_info.name = kName;
+  addon_info.name = kBinExportName;
   addon_info.producer = "Google";
-  addon_info.version = BINEXPORT_RELEASE " @" BINEXPORT_REVISION;
+  addon_info.version = kBinExportDetailedVersion;
   addon_info.url = "https://github.com/google/binexport";
-  addon_info.freeform = kCopyright;
+  addon_info.freeform = kBinExportCopyright;
   register_addon(&addon_info);
 
   if (!hook_to_notification_point(HT_UI, UiHook, /*user_data=*/nullptr)) {
@@ -482,12 +472,12 @@ int idaapi PluginInit() {
   return PLUGIN_KEEP;
 }
 
-void idaapi PluginTerminate() {
+void Plugin::Terminate() {
   unhook_from_notification_point(HT_UI, UiHook, /*user_data=*/nullptr);
   ShutdownLogging();
 }
 
-bool idaapi PluginRun(size_t argument) {
+bool Plugin::Run(size_t argument) {
   if (strlen(get_path(PATH_TYPE_IDB)) == 0) {
     info("Please open an IDB first.");
     return false;
@@ -510,7 +500,7 @@ bool idaapi PluginRun(size_t argument) {
       DoExport(static_cast<ExportMode>(argument), module, connection_string);
     } else {
       ask_form(GetDialog(), ButtonBinaryExport, ButtonTextExport,
-                     ButtonStatisticsExport);
+               ButtonStatisticsExport);
     }
   } catch (const std::exception& error) {
     LOG(INFO) << "export cancelled: " << error.what();
@@ -519,18 +509,18 @@ bool idaapi PluginRun(size_t argument) {
   return true;
 }
 
-}  // namespace
-}  // namespace binexport
-}  // namespace security
+}  // namespace security::binexport
+
+using security::binexport::Plugin;
 
 plugin_t PLUGIN = {
     IDP_INTERFACE_VERSION,
-    PLUGIN_FIX,                            // Plugin flags
-    security::binexport::PluginInit,       // Initialize
-    security::binexport::PluginTerminate,  // Terminate
-    security::binexport::PluginRun,        // Invoke plugin
-    security::binexport::kComment,         // Statusline text
-    nullptr,                      // Multi-line help about the plugin, unused
-    security::binexport::kName,   // Preferred short name of the plugin.
-    security::binexport::kHotKey  // Preferred hotkey to run the plugin.
+    PLUGIN_FIX,  // Plugin flags
+    []() { return Plugin::instance()->Init(); },
+    []() { Plugin::instance()->Terminate(); },
+    [](size_t argument) { return Plugin::instance()->Run(argument); },
+    Plugin::kComment,  // Statusline text
+    nullptr,           // Multi-line help about the plugin, unused
+    security::binexport::kBinExportName,  // Preferred short name of the plugin
+    Plugin::kHotKey                       // Preferred hotkey to run the plugin
 };

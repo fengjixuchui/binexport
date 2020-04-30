@@ -1,4 +1,4 @@
-// Copyright 2011-2019 Google LLC. All Rights Reserved.
+// Copyright 2011-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,14 +14,13 @@
 
 #include "third_party/zynamics/binexport/util/format.h"
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
-using testing::StrEq;
-
-namespace security {
-namespace binexport {
+namespace security::binexport {
 namespace {
+
+using ::testing::StrEq;
 
 TEST(FormatUtilTest, FormatAddress) {
   EXPECT_THAT(FormatAddress(0x08), StrEq("00000008"));
@@ -40,5 +39,4 @@ TEST(FormatUtilTest, HumanReadableDuration) {
 }
 
 }  // namespace
-}  // namespace binexport
-}  // namespace security
+}  // namespace security::binexport

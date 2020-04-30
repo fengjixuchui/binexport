@@ -1,4 +1,4 @@
-// Copyright 2011-2019 Google LLC. All Rights Reserved.
+// Copyright 2011-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,12 +25,12 @@
 #include "third_party/zynamics/binexport/reader/graph_utility.h"
 #include "third_party/zynamics/binexport/types.h"
 
-namespace security {
-namespace binexport {
+namespace security::binexport {
 namespace {
 
 absl::optional<Architecture> GetSupportedArchitecture(const BinExport2& proto) {
-  const std::string& architecture = proto.meta_information().architecture_name();
+  const std::string& architecture =
+      proto.meta_information().architecture_name();
   if (architecture == "arm") {
     return Architecture::kArm;
   }
@@ -64,6 +64,7 @@ uint32_t GetEdgeTypeFromProto(BinExport2::FlowGraph::Edge::Type type) {
       return FlowGraph::kEdgeSwitch;
     default:
       LOG(QFATAL) << "Invalid edge type: " << type;
+      return FlowGraph::kEdgeUnconditional;  // Not reached
   }
 }
 
@@ -237,5 +238,4 @@ bool FlowGraph::IsExitNode(Vertex vertex) const {
   return !IsJumpInstruction(last_instruction, architecture_);
 }
 
-}  // namespace binexport
-}  // namespace security
+}  // namespace security::binexport

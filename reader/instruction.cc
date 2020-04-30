@@ -1,4 +1,4 @@
-// Copyright 2011-2019 Google LLC. All Rights Reserved.
+// Copyright 2011-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,8 +14,7 @@
 
 #include "third_party/zynamics/binexport/reader/instruction.h"
 
-namespace security {
-namespace binexport {
+namespace security::binexport {
 
 Instruction::Instruction(Address address, const std::string& mnemonic)
     : address_(address), mnemonic_(mnemonic) {}
@@ -42,5 +41,4 @@ bool IsJumpInstruction(const Instruction& instruction,
   return false;
 }
 
-}  // namespace binexport
-}  // namespace security
+}  // namespace security::binexport

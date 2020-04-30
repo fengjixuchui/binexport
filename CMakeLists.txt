@@ -1,4 +1,4 @@
-# Copyright 2011-2019 Google LLC. All Rights Reserved.
+# Copyright 2011-2020 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.7)
-cmake_policy(VERSION 3.7)
-project(binexport VERSION 10)  # Only major version is used
+cmake_minimum_required(VERSION 3.12)
+cmake_policy(VERSION 3.12)
+project(binexport VERSION 11)  # Only major version is used
 
+include(GoogleTest) # Needs to come before changing module path
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR})
 include(copts.cmake)
 include(util.cmake)
+set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
 # Use a copy of a subset of Boost that we ship
 set(Boost_NO_SYSTEM_PATHS TRUE)
@@ -53,21 +55,20 @@ create_directory_symlink(${PROJECT_BINARY_DIR} ${_binexport_gen}/binexport)
 
 # Find the Git revision number, if applicable
 set(REVISION unknown)
-if(GIT_FOUND)
-  execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+if(NOT "$ENV{KOKORO_PIPER_CHANGELIST}" STREQUAL "")
+  set(REVISION $ENV{KOKORO_PIPER_CHANGELIST})
+elseif(GIT_FOUND)
+  execute_process(COMMAND "${GIT_EXECUTABLE}" rev-parse --short HEAD
+                  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
                   OUTPUT_VARIABLE REVISION ERROR_QUIET)
-  if(NOT ${REVISION} STREQUAL "")
-    string(STRIP ${REVISION} REVISION)
-  # MOE:begin_strip
-  elseif(NOT $ENV{KOKORO_PIPER_CHANGELIST} STREQUAL "")
-    set(REVISION $ENV{KOKORO_PIPER_CHANGELIST})
-  # MOE:end_strip
+  if(NOT REVISION STREQUAL "")
+    string(STRIP "${REVISION}" REVISION)
   else()
     set(REVISION internal)
   endif()
 endif()
 
-configure_file(version.h.in version.h ESCAPE_QUOTES @ONLY)
+configure_file(version.cc.in version.cc ESCAPE_QUOTES @ONLY)
 
 # Interface library with include paths used by BinExport
 add_library(binexport_base INTERFACE)
@@ -102,21 +103,26 @@ add_library(binexport_shared STATIC
   binexport.h
   hash.cc
   hash.h
-  util/canonical_errors.cc
-  util/canonical_errors.h
   util/filesystem.cc
   util/filesystem.h
   util/format.cc
   util/format.h
-  util/status.cc
-  util/status.h
+  util/idb_export.cc
+  util/idb_export.h
+  util/logging.cc
+  util/logging.h
+  util/process.cc
+  util/process.h
   util/status_macros.h
   util/statusor.h
   util/timer.h
 )
 target_link_libraries(binexport_shared PUBLIC
   absl::bad_optional_access
+  absl::flat_hash_map
+  absl::flat_hash_set
   absl::optional
+  absl::status
   absl::str_format
   absl::strings
   absl::time
@@ -127,12 +133,19 @@ if(WIN32)
   target_link_libraries(binexport_shared PUBLIC
     shlwapi.lib
   )
+else()
+  if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+    target_link_libraries(binexport_shared PUBLIC
+      stdc++fs
+    )
+  endif()
 endif()
 add_executable(binexport_shared_test
   util/filesystem_test.cc
   util/format_test.cc
+  util/process_test.cc
   util/status_macros_test.cc
-  util/status_test.cc
+  util/status_matchers.h
   util/statusor_test.cc
   util/timer_test.cc
 )
@@ -140,7 +153,16 @@ target_link_libraries(binexport_shared_test PUBLIC
   binexport_test_base
   binexport_shared
 )
-add_test(BinExportSharedTests binexport_shared_test)
+gtest_discover_tests(binexport_shared_test)
+
+add_executable(idb_export_test util/idb_export_test.cc)
+target_link_libraries(idb_export_test
+  binexport_test_base
+  binexport_shared
+)
+gtest_discover_tests(idb_export_test PROPERTIES
+  ENVIRONMENT "TEST_TMPDIR=${PROJECT_BINARY_DIR}/idb_export_test_tmp"
+)
 
 add_library(binexport_test_util
   binexport_test_util.cc
@@ -161,27 +183,13 @@ target_link_libraries(binexport_test PUBLIC
   binexport_shared
   absl::memory
 )
-add_test(BinExportTests binexport_test)
+gtest_discover_tests(binexport_test)
 
 # binexport2dump tool
 add_subdirectory(tools)
 
-# Code shared with the BinDiff plugin
-add_ida_library(binexport_plugin_shared STATIC
-  hash.cc
-  hash.h
-  ida/digest.cc
-  ida/digest.h
-  ida/log.cc
-  ida/log.h
-)
-ida_target_link_libraries(binexport_plugin_shared PUBLIC
-  absl::time
-  binexport_base
-)
-
-set(binexport_plugin_name binexport${binexport_VERSION_MAJOR})
-add_ida_plugin(${binexport_plugin_name}
+# Non-plugin code shared with BinDiff/the Binary Ninja plugin
+add_library(binexport_core
   address_references.cc
   address_references.h
   base_types.cc
@@ -194,8 +202,6 @@ add_ida_plugin(${binexport_plugin_name}
   call_graph.h
   comment.cc
   comment.h
-  database_writer.cc
-  database_writer.h
   dump_writer.cc
   dump_writer.h
   edge.cc
@@ -210,6 +216,64 @@ add_ida_plugin(${binexport_plugin_name}
   flow_graph.h
   function.cc
   function.h
+  instruction.cc
+  instruction.h
+  library_manager.cc
+  library_manager.h
+  operand.cc
+  operand.h
+  statistics_writer.cc
+  statistics_writer.h
+  type_system.cc
+  type_system.h
+  version.h
+  ${CMAKE_CURRENT_BINARY_DIR}/version.cc
+  virtual_memory.cc
+  virtual_memory.h
+  x86_nop.cc
+  x86_nop.h
+)
+target_link_libraries(binexport_core PUBLIC
+  absl::bad_optional_access
+  absl::flat_hash_map
+  absl::flat_hash_set
+  absl::hash
+  absl::node_hash_map
+  absl::node_hash_set
+  absl::optional
+  absl::strings
+  absl::time
+  binexport_shared
+)
+
+# Code shared with the BinDiff plugin
+add_ida_library(binexport_plugin_shared STATIC
+  hash.cc
+  hash.h
+  ida/digest.cc
+  ida/digest.h
+  ida/log_sink.cc
+  ida/log_sink.h
+  ida/util.cc
+  ida/util.h
+)
+ida_target_link_libraries(binexport_plugin_shared PUBLIC
+  absl::time
+  binexport_base
+)
+
+set(binexport_plugin_name binexport${binexport_VERSION_MAJOR})
+add_ida_plugin(${binexport_plugin_name}
+  database/initialize_constraints_postgresql_sql.h
+  database/initialize_indices_postgresql_sql.h
+  database/initialize_tables_postgresql_sql.h
+  database/maintenance_postgresql_sql.h
+  database/postgresql.cc
+  database/postgresql.h
+  database/postgresql_writer.cc
+  database/postgresql_writer.h
+  database/query_builder.cc
+  database/query_builder.h
   ida/arm.cc
   ida/arm.h
   ida/dalvik.cc
@@ -217,41 +281,20 @@ add_ida_plugin(${binexport_plugin_name}
   ida/generic.cc
   ida/generic.h
   ida/main_plugin.cc
+  ida/main_plugin.h
   ida/metapc.cc
   ida/metapc.h
   ida/mips.cc
   ida/mips.h
   ida/names.cc
   ida/names.h
+  ida/plugin.h
   ida/ppc.cc
   ida/ppc.h
   ida/types_container.cc
   ida/types_container.h
   ida/ui.cc
   ida/ui.h
-  initialize_constraints_postgresql_sql.h
-  initialize_indices_postgresql_sql.h
-  initialize_tables_postgresql_sql.h
-  instruction.cc
-  instruction.h
-  library_manager.cc
-  library_manager.h
-  maintenance_postgresql_sql.h
-  operand.cc
-  operand.h
-  postgresql.cc
-  postgresql.h
-  query_builder.cc
-  query_builder.h
-  statistics_writer.cc
-  statistics_writer.h
-  type_system.cc
-  type_system.h
-  version.h
-  virtual_memory.cc
-  virtual_memory.h
-  x86_nop.cc
-  x86_nop.h
 )
 if(WIN32)
   list(APPEND binexport_libraries crypt32.lib
@@ -270,7 +313,7 @@ ida_target_link_libraries(${binexport_plugin_name}
   absl::optional
   absl::strings
   absl::time
-  binexport_shared
+  binexport_core
   binexport_plugin_shared
   ${PostgreSQL_LIBRARIES}
   # OpenSSL must come after PostgreSQL
@@ -285,7 +328,7 @@ ida_install(TARGETS ${binexport_plugin_name}
             RUNTIME DESTINATION binexport-prefix
             LIBRARY DESTINATION binexport-prefix)
 
-# Experimental BinExport reader library
+# BinExport reader library
 add_library(binexport_reader STATIC
   reader/call_graph.cc
   reader/call_graph.h
@@ -312,7 +355,6 @@ target_link_libraries(binexport_reader_test PUBLIC
   gmock
   binexport_reader
 )
-add_test(
-  NAME BinExportReaderTests
-  COMMAND binexport_reader_test ${PROJECT_SOURCE_DIR}/reader
+gtest_discover_tests(binexport_reader_test
+  EXTRA_ARGS ${PROJECT_SOURCE_DIR}/reader
 )

@@ -1,4 +1,4 @@
-// Copyright 2011-2019 Google LLC. All Rights Reserved.
+// Copyright 2011-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_ZYNAMICS_BINEXPORT_CALLGRAPH_H_
-#define THIRD_PARTY_ZYNAMICS_BINEXPORT_CALLGRAPH_H_
+#ifndef CALLGRAPH_H_
+#define CALLGRAPH_H_
 
 #include <iosfwd>
 #include <set>
@@ -99,4 +99,4 @@ class CallGraph {
 bool operator<(const EdgeInfo& one, const EdgeInfo& two);
 bool operator==(const EdgeInfo& one, const EdgeInfo& two);
 
-#endif  // THIRD_PARTY_ZYNAMICS_BINEXPORT_CALLGRAPH_H_
+#endif  // CALLGRAPH_H_

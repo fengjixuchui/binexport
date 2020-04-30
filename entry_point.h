@@ -1,4 +1,4 @@
-// Copyright 2011-2019 Google LLC. All Rights Reserved.
+// Copyright 2011-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_ZYNAMICS_BINEXPORT_ENTRY_POINT_H_
-#define THIRD_PARTY_ZYNAMICS_BINEXPORT_ENTRY_POINT_H_
+#ifndef ENTRY_POINT_H_
+#define ENTRY_POINT_H_
 
 #include <string>
 #include <vector>
@@ -93,4 +93,4 @@ class EntryPointAdder {
   std::string name_;
 };
 
-#endif  // THIRD_PARTY_ZYNAMICS_BINEXPORT_ENTRY_POINT_H_
+#endif  // ENTRY_POINT_H_

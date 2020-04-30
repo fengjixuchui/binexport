@@ -1,4 +1,4 @@
-// Copyright 2011-2019 Google LLC. All Rights Reserved.
+// Copyright 2011-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #undef CopyFile             // winbase.h
 #undef GetCurrentDirectory  // processenv.h
+#undef GetFullPathName      // fileapi.h
 #undef StrCat               // shlwapi.h
 #else
 #include <dirent.h>
@@ -34,6 +35,9 @@
 #ifdef __APPLE__
 #include <cerrno>
 #include <cstring>
+#else
+#include <filesystem>
+#include <system_error>  // NOLINT(build/c++11)
 #endif
 
 #include <algorithm>
@@ -45,7 +49,6 @@
 #include "third_party/absl/strings/str_replace.h"
 #include "third_party/absl/strings/string_view.h"
 #include "third_party/absl/strings/strip.h"
-#include "third_party/zynamics/binexport/util/canonical_errors.h"
 #include "third_party/zynamics/binexport/util/status_macros.h"
 
 #ifdef _WIN32
@@ -90,9 +93,22 @@ std::string GetCurrentDirectory() {
   return std::string(buffer);
 }
 
-not_absl::Status CreateDirectories(absl::string_view path) {
+std::string GetFullPathName(absl::string_view path) {
+#ifdef _WIN32
+  if (!PathIsRelativeA(std::string(path).c_str())) {
+    return std::string(path);
+  }
+#else
+  if (absl::StartsWith(path, kPathSeparator)) {
+    return std::string(path);
+  }
+#endif
+  return JoinPath(GetCurrentDirectory(), path);
+}
+
+absl::Status CreateDirectories(absl::string_view path) {
   if (path.empty()) {
-    return not_absl::OkStatus();
+    return absl::OkStatus();
   }
 #ifdef _WIN32
   std::string real_path = absl::StrReplaceAll(path, {{"/", "\\"}});
@@ -100,7 +116,7 @@ not_absl::Status CreateDirectories(absl::string_view path) {
       /*hwnd=*/nullptr, real_path.c_str(), /*psa=*/nullptr);
   if (result != ERROR_SUCCESS && result != ERROR_ALREADY_EXISTS &&
       result != ERROR_FILE_EXISTS) {
-    return not_absl::UnknownError(
+    return absl::UnknownError(
         absl::StrCat("cannot create directory \"", path, "\""));
   }
 #else
@@ -113,12 +129,12 @@ not_absl::Status CreateDirectories(absl::string_view path) {
   if (mkdir(path_copy.c_str(), 0775) == -1) {
     // Ignore existing directories.
     if (errno != EEXIST) {
-      return not_absl::UnknownError(absl::StrCat(
-          "cannot create directory \"", path, "\": ", strerror(errno)));
+      return absl::UnknownError(absl::StrCat("cannot create directory \"", path,
+                                             "\": ", strerror(errno)));
     }
   }
 #endif
-  return not_absl::OkStatus();
+  return absl::OkStatus();
 }
 
 namespace {
@@ -129,7 +145,7 @@ not_absl::StatusOr<std::string> DoGetOrCreateTempDirectory(
 #ifdef _WIN32
   char buffer[MAX_PATH] = {0};
   if (GetTempPath(MAX_PATH, buffer) == 0) {
-    return not_absl::UnknownError("error getting temp directory");
+    return absl::UnknownError("error getting temp directory");
   }
   path = JoinPath(buffer, product_name);
 #else
@@ -143,7 +159,8 @@ not_absl::StatusOr<std::string> DoGetOrCreateTempDirectory(
 
 }  // namespace
 
-not_absl::StatusOr<std::string> GetTempDirectory(absl::string_view product_name) {
+not_absl::StatusOr<std::string> GetTempDirectory(
+    absl::string_view product_name) {
   return DoGetOrCreateTempDirectory(product_name, /*create=*/false);
 }
 
@@ -155,8 +172,8 @@ not_absl::StatusOr<std::string> GetOrCreateTempDirectory(
 std::string Basename(absl::string_view path) {
   const auto last_slash = path.find_last_of(kPathSeparator[0]);
   return std::string(last_slash == absl::string_view::npos
-                    ? path
-                    : absl::ClippedSubstr(path, last_slash + 1));
+                         ? path
+                         : absl::ClippedSubstr(path, last_slash + 1));
 }
 
 std::string Dirname(absl::string_view path) {
@@ -183,7 +200,7 @@ std::string GetFileExtension(absl::string_view path) {
 }
 
 std::string ReplaceFileExtension(absl::string_view path,
-                            absl::string_view new_extension) {
+                                 absl::string_view new_extension) {
   auto last_slash = path.find_last_of(kPathSeparator[0]);
   if (last_slash == absl::string_view::npos) {
     last_slash = 0;
@@ -208,8 +225,8 @@ not_absl::StatusOr<mode_t> GetFileMode(absl::string_view path) {
       case ENOTDIR:
         return 0;
       default:
-        not_absl::UnknownError(absl::StrCat("stat() failed for \"", path,
-                                            "\": ", strerror(errno)));
+        return absl::UnknownError(absl::StrCat("stat() failed for \"", path,
+                                               "\": ", strerror(errno)));
     }
   }
   return file_info.st_mode;
@@ -224,8 +241,7 @@ not_absl::StatusOr<int64_t> GetFileSize(absl::string_view path) {
   if (stream) {
     return size;
   }
-  return not_absl::UnknownError(
-      absl::StrCat("cannot get file size for: ", path));
+  return absl::UnknownError(absl::StrCat("cannot get file size for: ", path));
 }
 
 bool FileExists(absl::string_view path) {
@@ -234,7 +250,7 @@ bool FileExists(absl::string_view path) {
   return PathFileExists(path_copy.c_str()) == TRUE;
 #else
   auto mode_or = GetFileMode(path);
-  return mode_or.ok() ? S_ISREG(mode_or.ValueOrDie()) : false;
+  return mode_or.ok() ? S_ISREG(mode_or.value()) : false;
 #endif
 }
 
@@ -244,12 +260,12 @@ bool IsDirectory(absl::string_view path) {
   return PathIsDirectory(path_copy.c_str()) == FILE_ATTRIBUTE_DIRECTORY;
 #else
   auto mode_or = GetFileMode(path);
-  return mode_or.ok() ? S_ISDIR(mode_or.ValueOrDie()) : false;
+  return mode_or.ok() ? S_ISDIR(mode_or.value()) : false;
 #endif
 }
 
-not_absl::Status GetDirectoryEntries(absl::string_view path,
-                                     std::vector<std::string>* result) {
+absl::Status GetDirectoryEntries(absl::string_view path,
+                                 std::vector<std::string>* result) {
 #ifdef _WIN32
   std::string path_copy(JoinPath(path, "*"));  // Assume path is a directory
   WIN32_FIND_DATA entry;
@@ -263,7 +279,7 @@ not_absl::Status GetDirectoryEntries(absl::string_view path,
     FindClose(directory);
   }
   if (error) {
-    return not_absl::UnknownError(
+    return absl::UnknownError(
         absl::StrCat("FindFirstFile() failed for: ", path));
   }
 #else
@@ -271,7 +287,7 @@ not_absl::Status GetDirectoryEntries(absl::string_view path,
   errno = 0;
   DIR* directory = opendir(path_copy.c_str());
   if (!directory) {
-    return not_absl::UnknownError(
+    return absl::UnknownError(
         absl::StrCat("opendir() failed for \"", path, "\": ", strerror(errno)));
   }
   struct dirent* entry;
@@ -282,37 +298,32 @@ not_absl::Status GetDirectoryEntries(absl::string_view path,
     }
   }
   if (errno != 0) {
-    return not_absl::UnknownError(
+    return absl::UnknownError(
         absl::StrCat("readdir() failed: ", strerror(errno)));
   }
   closedir(directory);
 #endif
-  return not_absl::OkStatus();
+  return absl::OkStatus();
 }
 
-not_absl::Status RemoveAll(absl::string_view path) {
+absl::Status RemoveAll(absl::string_view path) {
   std::string path_copy(path);
-#ifdef _WIN32
-  absl::StrAppend(&path_copy, "\0");  // Ensure double null-termination.
-  SHFILEOPSTRUCT operation = {};
-  operation.wFunc = FO_DELETE;
-  operation.pFrom = path_copy.c_str();
-  operation.fFlags = FOF_NO_UI;
-
-  auto result = SHFileOperation(&operation);
-  if (result != ERROR_SUCCESS && result != ERROR_FILE_NOT_FOUND &&
-      result != ERROR_PATH_NOT_FOUND) {
-    return not_absl::UnknownError(
-        absl::StrCat("SHFileOperation() failed for: ", path));
+#ifndef __APPLE__
+  // TODO(cblichmann): Use on all platforms once XCode has filesystem.
+  namespace fs = std::filesystem;
+  if (std::error_code ec;
+      fs::remove_all(path_copy, ec) == static_cast<std::uintmax_t>(-1)) {
+    return absl::UnknownError(
+        absl::StrCat("remove_all() failed for \"", path, "\": ", ec.message()));
   }
 #else
   errno = 0;
   if (!IsDirectory(path)) {
-    return not_absl::UnknownError(absl::StrCat("Not a directory: ", path));
+    return absl::UnknownError(absl::StrCat("Not a directory: ", path));
   }
   DIR* directory = opendir(path_copy.c_str());
   if (!directory) {
-    return not_absl::UnknownError(
+    return absl::UnknownError(
         absl::StrCat("opendir() failed for \"", path, "\": ", strerror(errno)));
   }
   struct dirent* entry;
@@ -329,25 +340,25 @@ not_absl::Status RemoveAll(absl::string_view path) {
     }
   }
   if (errno != 0) {
-    return not_absl::UnknownError(
+    return absl::UnknownError(
         absl::StrCat("readdir() failed: ", strerror(errno)));
   }
   closedir(directory);
   if (rmdir(path_copy.c_str()) == -1) {
-    return not_absl::UnknownError(
+    return absl::UnknownError(
         absl::StrCat("rmdir() failed: ", strerror(errno)));
   }
 #endif
-  return not_absl::OkStatus();
+  return absl::OkStatus();
 }
 
-not_absl::Status CopyFile(absl::string_view from, absl::string_view to) {
+absl::Status CopyFile(absl::string_view from, absl::string_view to) {
   std::ifstream input(std::string(from), std::ios::in | std::ios::binary);
   std::ofstream output(std::string(to),
                        std::ios::out | std::ios::trunc | std::ios::binary);
   output << input.rdbuf();
   if (!input || !output) {
-    return not_absl::UnknownError("error copying file");
+    return absl::UnknownError("error copying file");
   }
-  return not_absl::OkStatus();
+  return absl::OkStatus();
 }

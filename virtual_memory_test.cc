@@ -1,4 +1,4 @@
-// Copyright 2011-2019 Google LLC. All Rights Reserved.
+// Copyright 2011-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gtest/gtest.h>
-
 #include "third_party/zynamics/binexport/virtual_memory.h"
 
+#include "gtest/gtest.h"
+
+namespace security::binexport {
 namespace {
 
 static constexpr Address kBaseAddress = 0x10012345;
@@ -204,3 +205,4 @@ TEST(VirtualMemoryTest, FlagsWithinMemoryRegion) {
 }
 
 }  // namespace
+}  // namespace security::binexport

@@ -1,4 +1,4 @@
-// Copyright 2011-2019 Google LLC. All Rights Reserved.
+// Copyright 2011-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_ZYNAMICS_BINEXPORT_ARCHITECTURES_H_
-#define THIRD_PARTY_ZYNAMICS_BINEXPORT_ARCHITECTURES_H_
+#ifndef ARCHITECTURES_H_
+#define ARCHITECTURES_H_
 
-namespace security {
-namespace binexport {
+namespace security::binexport {
 
 enum class Architecture {
   kArm,
@@ -27,7 +26,6 @@ enum class Architecture {
   kX86Arch64,
 };
 
-}  // namespace binexport
-}  // namespace security
+}  // namespace security::binexport
 
-#endif  // THIRD_PARTY_ZYNAMICS_BINEXPORT_ARCHITECTURES_H_
+#endif  // ARCHITECTURES_H_

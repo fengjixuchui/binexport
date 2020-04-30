@@ -1,4 +1,4 @@
-// Copyright 2011-2019 Google LLC. All Rights Reserved.
+// Copyright 2011-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_ZYNAMICS_BINEXPORT_IDA_DIGEST_H_
-#define THIRD_PARTY_ZYNAMICS_BINEXPORT_IDA_DIGEST_H_
+#ifndef IDA_DIGEST_H_
+#define IDA_DIGEST_H_
 
 #include "third_party/zynamics/binexport/types.h"
 #include "third_party/zynamics/binexport/util/statusor.h"
 
-namespace security {
-namespace binexport {
+namespace security::binexport {
 //
 // Returns the lowercase hex string of the SHA256 hash of the original input
 // file for the current IDB.
@@ -30,7 +29,6 @@ not_absl::StatusOr<std::string> GetInputFileSha256();
 // exists to support the legacy MD5 field in the BinExport database schema.
 not_absl::StatusOr<std::string> GetInputFileMd5();
 
-}  // namespace binexport
-}  // namespace security
+}  // namespace security::binexport
 
-#endif  // THIRD_PARTY_ZYNAMICS_BINEXPORT_IDA_DIGEST_H_
+#endif  // IDA_DIGEST_H_

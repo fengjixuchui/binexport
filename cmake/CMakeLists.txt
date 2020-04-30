@@ -1,4 +1,4 @@
-# Copyright 2011-2019 Google LLC. All Rights Reserved.
+# Copyright 2011-2020 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,6 +43,6 @@ ExternalProject_Add(binexport
              "-DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH_ALT_SEP}"
              "-DABSL_ROOT_DIR=${CMAKE_CURRENT_BINARY_DIR}/absl"
              "-DGOOGLETEST_ROOT_DIR=${CMAKE_CURRENT_BINARY_DIR}/googletest"
-             "-DIdaSdk_DIR=${IdaSdk_ROOT_DIR}"
+             "-DIdaSdk_DIR=${IdaSdk_DIR}"
              "-DBUILD_TESTING=OFF"
 )

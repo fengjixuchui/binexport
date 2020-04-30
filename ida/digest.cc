@@ -1,4 +1,4 @@
-// Copyright 2011-2019 Google LLC. All Rights Reserved.
+// Copyright 2011-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,24 +14,24 @@
 
 #include "third_party/zynamics/binexport/ida/digest.h"
 
+// clang-format off
 #include "third_party/zynamics/binexport/ida/begin_idasdk.inc"  // NOLINT
 #include <nalt.hpp>                                             // NOLINT
 #include "third_party/zynamics/binexport/ida/end_idasdk.inc"    // NOLINT
+// clang-format on
 
 #include "base/integral_types.h"
+#include "third_party/absl/status/status.h"
 #include "third_party/absl/strings/ascii.h"
 #include "third_party/absl/strings/escaping.h"
-#include "third_party/zynamics/binexport/util/status.h"
 
-namespace security {
-namespace binexport {
+namespace security::binexport {
 
 not_absl::StatusOr<std::string> GetInputFileSha256() {
   constexpr int kBinarySha256Length = 32;
   unsigned char hash[kBinarySha256Length];
   if (!retrieve_input_file_sha256(hash)) {
-    return not_absl::Status{not_absl::StatusCode::kInternal,
-                            "Failed to load SHA256 hash of input file"};
+    return absl::InternalError("Failed to load SHA256 hash of input file");
   }
   return absl::AsciiStrToLower(absl::BytesToHexString(absl::string_view(
       reinterpret_cast<const char*>(hash), kBinarySha256Length)));
@@ -41,12 +41,10 @@ not_absl::StatusOr<std::string> GetInputFileMd5() {
   constexpr int kBinaryMd5Length = 16;
   unsigned char hash[kBinaryMd5Length];
   if (!retrieve_input_file_md5(hash)) {
-    return not_absl::Status{not_absl::StatusCode::kInternal,
-                            "Failed to load MD5 hash of input file"};
+    return absl::InternalError("Failed to load MD5 hash of input file");
   }
   return absl::AsciiStrToLower(absl::BytesToHexString(absl::string_view(
       reinterpret_cast<const char*>(hash), kBinaryMd5Length)));
 }
 
-}  // namespace binexport
-}  // namespace security
+}  // namespace security::binexport

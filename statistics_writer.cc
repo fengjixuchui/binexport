@@ -1,4 +1,4 @@
-// Copyright 2011-2019 Google LLC. All Rights Reserved.
+// Copyright 2011-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,8 +21,7 @@
 #include "third_party/zynamics/binexport/call_graph.h"
 #include "third_party/zynamics/binexport/flow_graph.h"
 
-namespace security {
-namespace binexport {
+namespace security::binexport {
 
 StatisticsWriter::StatisticsWriter(std::ostream& stream) : stream_(stream) {}
 
@@ -92,11 +91,12 @@ void StatisticsWriter::GenerateStatistics(
   statistics["flowgraph edges"] = edge_count;
 }
 
-not_absl::Status StatisticsWriter::Write(
-    const CallGraph& call_graph, const FlowGraph& flow_graph,
-    const Instructions& /* instructions */, const AddressReferences&,
-    const TypeSystem* /* type_system */,
-    const AddressSpace& /* address_space */) {
+absl::Status StatisticsWriter::Write(const CallGraph& call_graph,
+                                     const FlowGraph& flow_graph,
+                                     const Instructions& /* instructions */,
+                                     const AddressReferences&,
+                                     const TypeSystem* /* type_system */,
+                                     const AddressSpace& /* address_space */) {
   std::map<std::string, size_t> statistics;
   GenerateStatistics(call_graph, flow_graph, &statistics);
   for (const auto& entry : statistics) {
@@ -105,8 +105,7 @@ not_absl::Status StatisticsWriter::Write(
             << std::setfill(' ') << entry.second << std::endl;
   }
 
-  return not_absl::OkStatus();
+  return absl::OkStatus();
 }
 
-}  // namespace binexport
-}  // namespace security
+}  // namespace security::binexport

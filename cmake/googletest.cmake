@@ -1,4 +1,4 @@
-# Copyright 2011-2019 Google LLC. All Rights Reserved.
+# Copyright 2011-2020 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,8 +14,7 @@
 
 ExternalProject_Add(googletest
   GIT_REPOSITORY https://github.com/google/googletest.git
-  # Snapshot from 2018-01-29, includes VS 2017 fixes
-  GIT_TAG 798cc4a78a51677a50be0faa1a530197ada435a2
+  GIT_TAG e588eb1ff9ff6598666279b737b27f983156ad85 # 2020-02-27
   SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/googletest
   # Just use CMake to clone into directory
   CONFIGURE_COMMAND ""

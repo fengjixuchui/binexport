@@ -1,4 +1,4 @@
-// Copyright 2011-2019 Google LLC. All Rights Reserved.
+// Copyright 2011-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 // and ex_?_types, respectively, to represent types and members of compound
 // types according to the C type system.
 
-#ifndef THIRD_PARTY_ZYNAMICS_BINEXPORT_BASE_TYPES_H_
-#define THIRD_PARTY_ZYNAMICS_BINEXPORT_BASE_TYPES_H_
+#ifndef BASE_TYPES_H_
+#define BASE_TYPES_H_
 
 #include <string>
 #include <vector>
@@ -132,4 +132,4 @@ struct MemberType {
   static uint32_t NextTypeId();
 };
 
-#endif  // THIRD_PARTY_ZYNAMICS_BINEXPORT_BASE_TYPES_H_
+#endif  // BASE_TYPES_H_

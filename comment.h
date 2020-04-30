@@ -1,4 +1,4 @@
-// Copyright 2011-2019 Google LLC. All Rights Reserved.
+// Copyright 2011-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_ZYNAMICS_BINEXPORT_COMMENT_H_
-#define THIRD_PARTY_ZYNAMICS_BINEXPORT_COMMENT_H_
+#ifndef COMMENT_H_
+#define COMMENT_H_
 
 #include <string>
 #include <vector>
@@ -30,8 +30,8 @@ class Comment {
     POSTERIOR = 3,
     FUNCTION = 4,
     LOCATION = 5,
-    GLOBALREFERENCE = 6,
-    LOCALREFERENCE = 7,
+    GLOBAL_REFERENCE = 6,
+    LOCAL_REFERENCE = 7,
     STRUCTURE = 8,
     INVALID
   };
@@ -51,4 +51,4 @@ class Comment {
 using Comments = std::vector<Comment>;
 bool SortComments(const Comment& one, const Comment& two);
 
-#endif  // THIRD_PARTY_ZYNAMICS_BINEXPORT_COMMENT_H_
+#endif  // COMMENT_H_

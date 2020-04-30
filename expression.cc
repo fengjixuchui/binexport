@@ -1,4 +1,4 @@
-// Copyright 2011-2019 Google LLC. All Rights Reserved.
+// Copyright 2011-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@
 
 #include "third_party/zynamics/binexport/expression.h"
 
-#include <cassert>
 #include <sstream>
 
+#include "base/logging.h"
 #include "third_party/zynamics/binexport/hash.h"
 #include "third_party/zynamics/binexport/instruction.h"
 
@@ -24,7 +24,7 @@ Expression::StringCache Expression::string_cache_;
 Expression::ExpressionCache Expression::expression_cache_;
 int Expression::global_id_ = 0;
 
-Expression::Expression(Expression* parent, const std::string& symbol,
+Expression::Expression(const Expression* parent, const std::string& symbol,
                        int64_t immediate, Type type, uint16_t position,
                        bool relocatable)
     : symbol_(CacheString(symbol)),
@@ -33,12 +33,12 @@ Expression::Expression(Expression* parent, const std::string& symbol,
       position_(position),
       type_(type),
       relocatable_(relocatable) {
-  assert(!symbol.empty() || IsImmediate());
+  DCHECK(!symbol.empty() || IsImmediate());
 }
 
-Expression* Expression::Create(Expression* parent, const std::string& symbol,
-                               int64_t immediate, Type type,
-                               uint16_t position, bool relocatable) {
+Expression* Expression::Create(const Expression* parent,
+                               const std::string& symbol, int64_t immediate,
+                               Type type, uint16_t position, bool relocatable) {
   Expression expression(parent, symbol, immediate, type, position, relocatable);
   const std::string signature = expression.CreateSignature();
   ExpressionCache::iterator i = expression_cache_.find(signature);
@@ -67,6 +67,8 @@ const Expression::ExpressionCache& Expression::GetExpressions() {
 }
 
 bool Expression::IsSymbol() const { return type_ == TYPE_SYMBOL; }
+
+bool Expression::IsRegister() const { return type_ == TYPE_REGISTER; }
 
 bool Expression::IsImmediate() const {
   return type_ == TYPE_IMMEDIATE_INT || type_ == TYPE_IMMEDIATE_FLOAT ||

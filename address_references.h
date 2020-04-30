@@ -1,4 +1,4 @@
-// Copyright 2011-2019 Google LLC. All Rights Reserved.
+// Copyright 2011-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_ZYNAMICS_BINEXPORT_ADDRESS_REFERENCES_H_
-#define THIRD_PARTY_ZYNAMICS_BINEXPORT_ADDRESS_REFERENCES_H_
+#ifndef ADDRESS_REFERENCES_H_
+#define ADDRESS_REFERENCES_H_
 
 #include <algorithm>
 #include <vector>
@@ -73,4 +73,4 @@ typedef std::vector<AddressReference> AddressReferences;
 bool operator<(const AddressReference& one, const AddressReference& two);
 bool operator==(const AddressReference& one, const AddressReference& two);
 
-#endif  // THIRD_PARTY_ZYNAMICS_BINEXPORT_ADDRESS_REFERENCES_H_
+#endif  // ADDRESS_REFERENCES_H_

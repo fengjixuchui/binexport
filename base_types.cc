@@ -1,4 +1,4 @@
-// Copyright 2011-2019 Google LLC. All Rights Reserved.
+// Copyright 2011-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,13 +42,9 @@ uint32_t BaseType::GetId() const {
   return id_;
 }
 
-void BaseType::SetName(const std::string& name) {
-  name_ = name;
-}
+void BaseType::SetName(const std::string& name) { name_ = name; }
 
-const std::string& BaseType::GetName() const {
-  return name_;
-}
+const std::string& BaseType::GetName() const { return name_; }
 
 void BaseType::SetSize(size_t size) {
   size_ = size;

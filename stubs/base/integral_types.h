@@ -1,4 +1,4 @@
-// Copyright 2011-2019 Google LLC. All Rights Reserved.
+// Copyright 2011-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_ZYNAMICS_BINEXPORT_BASE_INTEGRAL_TYPES_H_
-#define THIRD_PARTY_ZYNAMICS_BINEXPORT_BASE_INTEGRAL_TYPES_H_
+#ifndef BASE_INTEGRAL_TYPES_H_
+#define BASE_INTEGRAL_TYPES_H_
+
 #include <google/protobuf/stubs/port.h>
 
 // Import macros
@@ -37,4 +38,4 @@ using ::google::protobuf::uint32;
 using ::google::protobuf::uint64;
 using ::google::protobuf::uint8;
 
-#endif  // THIRD_PARTY_ZYNAMICS_BINEXPORT_BASE_INTEGRAL_TYPES_H_
+#endif  // BASE_INTEGRAL_TYPES_H_

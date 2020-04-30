@@ -1,4 +1,4 @@
-// Copyright 2011-2019 Google LLC. All Rights Reserved.
+// Copyright 2011-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,14 +14,13 @@
 
 #include "third_party/zynamics/binexport/binexport.h"
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
+
+namespace security::binexport {
+namespace {
 
 using ::testing::Eq;
-
-namespace security {
-namespace binexport {
-namespace {
 
 Address AddInstruction(Address start_address, int8_t size, BinExport2* proto) {
   auto* instruction = proto->add_instruction();
@@ -53,5 +52,4 @@ TEST(BinExportTest, TestInstructionAddress) {
 }
 
 }  // namespace
-}  // namespace binexport
-}  // namespace security
+}  // namespace security::binexport
