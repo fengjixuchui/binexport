@@ -1,4 +1,4 @@
-// Copyright 2011-2020 Google LLC
+// Copyright 2019-2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,28 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Companion header to begin_idasdk.inc. In order to work, this must be
-// included after including any IDA Pro headers.
+#ifndef BINARYNINJA_LOG_SINK_H_
+#define BINARYNINJA_LOG_SINK_H_
 
-#undef uint128
-#undef int128
-#undef uint64
-#undef int64
-#undef uint32
-#undef int32
-#undef uint16
-#undef int16
-#undef uint8
-#undef sint8
-#undef int8
+#include "base/logging.h"
+#include "third_party/zynamics/binexport/util/logging.h"
 
-// Undefine the operand shortcuts Op1-Op8, as those pollute the global
-// namespace.
-#undef Op8
-#undef Op7
-#undef Op6
-#undef Op5
-#undef Op4
-#undef Op3
-#undef Op2
-#undef Op1
+namespace security::binexport {
+
+class BinaryNinjaLogSink : public not_absl::LogSink {
+ public:
+  void Send(const not_absl::LogEntry& entry) override;
+};
+
+}  // namespace security::binexport
+
+#endif  // BINARYNINJA_LOG_SINK_H_
