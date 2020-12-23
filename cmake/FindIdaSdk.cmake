@@ -68,7 +68,7 @@ include(FindPackageHandleStandardArgs)
 
 find_path(IdaSdk_DIR NAMES include/pro.h
                      HINTS ${IdaSdk_ROOT_DIR} ENV IDASDK_ROOT
-                     PATHS ${CMAKE_CURRENT_LIST_DIR}/third_party/idasdk
+                     PATHS ${CMAKE_CURRENT_LIST_DIR}/../third_party/idasdk
                      PATH_SUFFIXES idasdk
                      DOC "Location of the IDA SDK"
                      NO_DEFAULT_PATH)
@@ -93,7 +93,6 @@ if(APPLE)
   set(IdaSdk_PLATFORM __MAC__)
 elseif(UNIX)
   set(IdaSdk_PLATFORM __LINUX__)
-  set(_ida_compile_options -m64)
 elseif(WIN32)
   set(IdaSdk_PLATFORM __NT__)
 else()

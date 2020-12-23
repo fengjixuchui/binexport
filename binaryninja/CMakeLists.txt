@@ -24,6 +24,8 @@ target_link_libraries(${binexport_bn_plugin_name} PRIVATE
   absl::strings
   BinaryNinja::API
   binexport_core
-  OpenSSL::SSL
 )
-set_target_properties(${binexport_bn_plugin_name} PROPERTIES PREFIX "")
+set_target_properties(${binexport_bn_plugin_name} PROPERTIES
+  PREFIX ""
+  OSX_ARCHITECTURES x86_64 # Binary Ninja is still x86_64
+)

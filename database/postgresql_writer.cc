@@ -218,7 +218,7 @@ void DatabaseWriter::PrepareDatabase(const std::string& md5,
   }
 
   absl::StrReplaceAll({{"\\", "/"}}, &module_name_);
-  const auto pos = module_name_.rfind("/");
+  const auto pos = module_name_.rfind('/');
   const std::string module_name =
       pos != std::string::npos ? module_name_.substr(pos + 1) : module_name_;
 
@@ -639,8 +639,8 @@ void DatabaseWriter::InsertExpressionSubstitutions(
             }
             if (expression->IsImmediate() && !expression->GetSymbol().empty()) {
               query_builder
-                  << "(" << static_cast<int64_t>(instruction.GetAddress()) << ","
-                  << operand_num << "," << expression->GetId() << ","
+                  << "(" << static_cast<int64_t>(instruction.GetAddress())
+                  << "," << operand_num << "," << expression->GetId() << ","
                   << database_.EscapeLiteral(expression->GetSymbol()) << "),"
                   << kFlushQuery;
             }
